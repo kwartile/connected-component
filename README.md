@@ -31,7 +31,7 @@ The API expects you to provide RDD of cliques and maximum number of iterations. 
 
 We first build a List of nodePairs (```RDD[(Long, Long)]```), from the list of given cliques.  We then apply the Large Star and Small Star operations on the list of node pairs.  
 
-We implemented the large star as follows:
+We implemented the Large Star algorithm as follows:
 ```
 LargeStar 
 Input: List of nodePair(a, b)
@@ -44,7 +44,7 @@ Output: List of new nodePairs and change in totalConnectivityChangeCount
 5: Sum this change for every self to get total change in connectivity, totalConnectivityChangeCount
 6: Return the list of new nodePairs and totalConnectivityChangeCount
 ```
-We implemented the Small star as follows:
+We implemented the Small Star algorithm as follows:
 ```
 SmallStar 
 Input: List of nodePair(a, b)
@@ -55,17 +55,16 @@ Output: List of new nodePairs and change in totalConnectivityChangeCount
 ```
 We call the Large Star and Small Star alternatively till the sum of the ```totalConnectivityChangeCount``` becomes zero.  The outputs are RDD of nodePairs, a flag to indicate whether the algorithm converged within the given number of iterations, and count of iterations it took the algorithm to converge.  In our experiments with various datasets, we observed that the algorithm was able to converge within 5 iterations. 
 
-The second element of the resultant nodePair is the minimum node in the connected component.  To get all the nodes in a components, you will need to run reduce operation with first element as the key.  For example, to get all the connected components, you may use the following:
+The second element of the resultant nodePair is the minimum node in the connected component.  To get all the nodes in a components, you will need to run reduce operation with second element as the key.  For example, to get all the connected components, you may use the following:
 ```
-val (cc, didConverge, iterCount) = ConnectedComponent.run(sc, cliques, 
-maxIterCount)
+val (cc, didConverge, iterCount) = ConnectedComponent.run(sc, cliques, maxIterCount)
 If (didConverge) {
 	val allComponents = cc.map(x => {
-		val minNode = x._2
+   		val minNode = x._2
 		val otherNode = x._1
 		(minNode, List(otherNode))
 	}).reduceByKey((a, b) => b ::: a)
-}.
+}
 ```
 
 ---
