@@ -67,6 +67,8 @@ If (didConverge) {
 	}).reduceByKey((a, b) => b ::: a)
 }.
 ```
+
+---
 #### Conclusion
 We tested our implementation on various data sizes - scaling up to ~20 billion nodes and ~400 billion edges.  In all the cases, the algorithm converged in no more than 6 iterations.  We did need to try various Spark related configurations, including executor memory size, driver memory size, yarn memory overhead, network timeout, and number of partitions to successfully run the implementation.
 
