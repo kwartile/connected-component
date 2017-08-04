@@ -25,7 +25,7 @@ In this case, we have 8 cliques as the input.  As you can see that cliques 1, 2,
 
 The main API to drive the algorithm is 
 ```
-ConnectedComponent.run(sc: SparkContext, cliques:RDD[List[Long]], maxIterationCount: Int): (RDD([Long, Long)], Boolean, Int)
+ConnectedComponent.run(cliques:RDD[List[Long]], maxIterationCount: Int): (RDD([Long, Long)], Boolean, Int)
 ```
 The API expects you to provide RDD of cliques and maximum number of iterations.  It returns ```RDD[(Long, Long)]``` i.e. a RDD of 2-tuple. The second element of the tuple is the minimum node in a connected component and the first element is another node in the same component.
 
@@ -57,7 +57,7 @@ We call the Large Star and Small Star alternatively till the sum of the ```total
 
 The second element of the resultant nodePair is the minimum node in the connected component.  To get all the nodes in a components, you will need to run reduce operation with second element as the key.  For example, to get all the connected components, you may use the following:
 ```
-val (cc, didConverge, iterCount) = ConnectedComponent.run(sc, cliques, maxIterCount)
+val (cc, didConverge, iterCount) = ConnectedComponent.run(cliques, maxIterCount)
 If (didConverge) {
 	val allComponents = cc.map(x => {
    		val minNode = x._2
