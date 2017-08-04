@@ -84,7 +84,7 @@ object ConnectedComponent extends Serializable {
         ((neighbor <= self && neighbor != minNode) || (self == neighbor))
       })
       val uniqueNodePairs = newNodePairs.toSet.toList
-      val connectivtyChangeCount = (neighbors.length - uniqueNodePairs.length)
+      val connectivtyChangeCount = (uniqueNodePairs diff neighbors.map((self, _))).length
       (uniqueNodePairs, connectivtyChangeCount)
     }).persist(StorageLevel.MEMORY_AND_DISK_SER)
 
@@ -155,8 +155,8 @@ object ConnectedComponent extends Serializable {
       })
 
       val uniqueNodePairs = newNodePairs.toSet.toList
-      val changeCount = (neighbors.length - uniqueNodePairs.length)
-      (uniqueNodePairs, changeCount)
+      val connectivtyChangeCount = (uniqueNodePairs diff neighbors.map((self, _))).length
+      (uniqueNodePairs, connectivtyChangeCount)
     }).persist(StorageLevel.MEMORY_AND_DISK_SER)
 
     val totalConnectivityCountChange = newNodePairsWithChangeCount.mapPartitions(iter => {

@@ -8,7 +8,7 @@
     <artifactId>connected-component</artifactId>
     <version>1.0-SNAPSHOT</version>
     <properties>
-        <scala.version>2.10.6</scala.version>
+        <scala.version>2.11.11</scala.version>
     </properties>
 
     <repositories>
@@ -38,29 +38,23 @@
         </dependency>
         <dependency>
             <groupId>org.apache.spark</groupId>
-            <artifactId>spark-core_2.10</artifactId>
-            <version>1.6.0-cdh5.8.0</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.spark</groupId>
-            <artifactId>spark-streaming_2.10</artifactId>
-            <version>1.6.0-cdh5.8.0</version>
-            <scope>provided</scope>
+            <artifactId>spark-core_2.11</artifactId>
+            <version>2.1.0.cloudera1</version>
+            <scope>compile</scope>
         </dependency>
         <!-- https://mvnrepository.com/artifact/org.apache.spark/spark-sql_2.10 -->
         <dependency>
             <groupId>org.apache.spark</groupId>
-            <artifactId>spark-sql_2.10</artifactId>
-            <version>1.6.0-cdh5.8.0</version>
-            <scope>provided</scope>
+            <artifactId>spark-sql_2.11</artifactId>
+            <version>2.1.0.cloudera1</version>
+            <scope>compile</scope>
         </dependency>
         <!-- https://mvnrepository.com/artifact/org.apache.spark/spark-graphx_2.10 -->
         <dependency>
             <groupId>org.apache.spark</groupId>
-            <artifactId>spark-graphx_2.10</artifactId>
-            <version>1.6.0-cdh5.8.0</version>
-            <scope>provided</scope>
+            <artifactId>spark-graphx_2.11</artifactId>
+            <version>2.1.0.cloudera1</version>
+            <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>junit</groupId>
@@ -77,14 +71,6 @@
     <build>
         <sourceDirectory>src/main/scala</sourceDirectory>
         <testSourceDirectory>src/test/scala</testSourceDirectory>
-        <!--  extensions>
-          <extension>
-            <groupId>org.apache.maven.wagon</groupId>
-            <artifactId>wagon-ssh</artifactId>
-            <version>2.3</version>
-          </extension>
-        </extensions -->
-
         <plugins>
             <plugin>
                 <groupId>net.alchim31.maven</groupId>
@@ -98,7 +84,6 @@
                         </goals>
                         <configuration>
                             <args>
-                                <arg>-make:transitive</arg>
                                 <arg>-dependencyfile</arg>
                                 <arg>${project.build.directory}/.scala_dependencies</arg>
                             </args>

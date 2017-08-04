@@ -31,14 +31,17 @@ object CCDriver extends Serializable {
 
   /**
     *
-    * @param args name of the file containing cliques.  One line in the file represent one clique.
+    * @param args name of the file containing cliques.  One line in the file represents one clique.
     *             e.g.:
     *             1 9 4 5
     *             2 234 23 1
     *             6 3
     */
   def main(args: Array[String]) = {
-    val sparkConf = new SparkConf().setAppName("ConnectedComponent")
+
+    val sparkConf = new SparkConf()
+      .setAppName("ConnectedComponent")
+      .setMaster("local[1]")
 
     val sc = new SparkContext(sparkConf)
     val cliqueFile = args(0)
