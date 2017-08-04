@@ -51,7 +51,7 @@ object CCDriver extends Serializable {
       nodes
     })
 
-    val (cc, didConverge, iterCount) = ConnectedComponent.run(sc, cliques, 20)
+    val (cc, didConverge, iterCount) = ConnectedComponent.run(cliques, 20)
 
     if (didConverge) {
       println("Converged in " + iterCount + " iterations")

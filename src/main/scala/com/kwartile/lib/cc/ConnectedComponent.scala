@@ -26,10 +26,8 @@
 
 package com.kwartile.lib.cc
 
-import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
-
 import scala.annotation.tailrec
 import scala.collection.mutable.HashSet
 
@@ -220,7 +218,6 @@ object ConnectedComponent extends Serializable {
 
   /**
     * Implements alternatingAlgo.  Converges when the changeCount is either 0 or does not change from the previous iteration
-    * @param sc sparkContext
     * @param nodePairs for a graph
     * @param largeStarConnectivityChangeCount change count that resulted from the previous iteration
     * @param smallStarConnectivityChangeCount change count that resulted from the previous iteration
@@ -231,7 +228,7 @@ object ConnectedComponent extends Serializable {
     */
   
   @tailrec
-  private def alternatingAlgo(sc: SparkContext, nodePairs: RDD[(Long, Long)], 
+  private def alternatingAlgo(nodePairs: RDD[(Long, Long)],
       largeStarConnectivityChangeCount: Int, smallStarConnectivityChangeCount: Int, didConverge: Boolean, 
       currIterationCount: Int, maxIterationCount: Int): (RDD[(Long, Long)], Boolean, Int) = {
     
@@ -250,11 +247,11 @@ object ConnectedComponent extends Serializable {
       if ((currLargeStarConnectivityChangeCount == largeStarConnectivityChangeCount &&
           currSmallStarConnectivityChangeCount == smallStarConnectivityChangeCount) ||
           (currSmallStarConnectivityChangeCount == 0 && currLargeStarConnectivityChangeCount == 0)) {
-        alternatingAlgo(sc, nodePairsSmallStar, currLargeStarConnectivityChangeCount, 
+        alternatingAlgo(nodePairsSmallStar, currLargeStarConnectivityChangeCount,
             currSmallStarConnectivityChangeCount, true, iterationCount, maxIterationCount)
       }
       else {
-        alternatingAlgo(sc, nodePairsSmallStar, currLargeStarConnectivityChangeCount, 
+        alternatingAlgo(nodePairsSmallStar, currLargeStarConnectivityChangeCount,
             currSmallStarConnectivityChangeCount, false, iterationCount, maxIterationCount)
       }
     }
@@ -262,18 +259,17 @@ object ConnectedComponent extends Serializable {
 
   /**
     * Driver function
-    * @param sc sparkContext
     * @param cliques list of nodes representing subgraphs (or cliques)
     * @param maxIterationCount maximum number iterations to try before giving up
     * @return Connected Components as nodePairs where second member of the nodePair is the minimum node in the component
     */
-  def run(sc: SparkContext, cliques:RDD[List[Long]], maxIterationCount: Int): (RDD[(Long, Long)], Boolean, Int) = {
+  def run(cliques:RDD[List[Long]], maxIterationCount: Int): (RDD[(Long, Long)], Boolean, Int) = {
     
     val nodePairs = cliques.map(aClique => {
       buildPairs(aClique)
     }).flatMap(x=>x)
     
-    val (cc, didConverge, iterCount) = alternatingAlgo(sc, nodePairs, 9999999, 9999999, false, 0, maxIterationCount)
+    val (cc, didConverge, iterCount) = alternatingAlgo(nodePairs, 9999999, 9999999, false, 0, maxIterationCount)
     
     if (didConverge) {
       (cc, didConverge, iterCount)
