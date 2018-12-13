@@ -9,7 +9,7 @@ We implemented connected component algorithm described in the paper [Connected C
 #### Implementation
 We implemented the algorithm on Apache Spark on HDFS using Scala.  We also provide a sample graph generator and a driver program.  You can tune the parameters of this generator to change the characteristics of the generated graph.  The generator saves the generated graph on HDFS.  You can use the driver program to read the generated graph and run the algorithm.  The results of the algorithm is also stored on HDFS.  Alternatively, you can call directly call the API to run the algorithm.
 
-In the implementation, we represent a node by a unique Long number.  Input to the algorithm is a List of Cliques.  A Clique is a list of nodes that are connected together.  For example, given the above example (in figure one), the cliques can be:
+In the implementation, we represent a node by a unique Long number.  Input to the algorithm is a List of Cliques.  A Clique is a list of nodes that are connected together.  For example, the cliques can be:
 ```
 1:	List(1L, 2L, 3L)
 2:	List(3L, 4L)
@@ -21,7 +21,7 @@ In the implementation, we represent a node by a unique Long number.  Input to th
 8:	List(9L)
 ```
 
-In this case, we have 8 cliques as the input.  As you can see that cliques 1, 2, 3, 4 form one connected component, cliques 5, 6, 7 form second connected component, and clique 8 forms the third connected component.
+In this case, we have 8 cliques as the input.  As you can see that cliques 1, 2, 3, 4 form one connected component, cliques 5, 6, 7 form the second connected component, and clique 8 forms the third connected component.
 
 The main API to drive the algorithm is 
 ```
