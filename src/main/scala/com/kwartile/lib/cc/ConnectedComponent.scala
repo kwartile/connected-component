@@ -29,7 +29,8 @@ package com.kwartile.lib.cc
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 import scala.annotation.tailrec
-import scala.collection.mutable.HashSet
+import scala.collection.mutable
+
 
 object ConnectedComponent extends Serializable {
 
@@ -48,9 +49,9 @@ object ConnectedComponent extends Serializable {
     val neighbors = nodePairs.map(x => {
       val (self, neighbor) = (x._1, x._2)
       if (self > neighbor)
-        (self, List(neighbor))
+        (self, neighbor)
       else
-        (neighbor, List(self))
+        (neighbor, self)
     })
 
     /**
@@ -61,10 +62,11 @@ object ConnectedComponent extends Serializable {
       * (1) you may need to tweak number of partitions.
       * (2) also, watch out for data skew. In that case, consider using rangePartitioner
       */
-
-    val allNeighbors = neighbors.reduceByKey((a, b) => {
-          b ::: a
-    })
+    val empty = mutable.HashSet[Long]()
+    val allNeighbors = neighbors.aggregateByKey(empty)(
+      (lb, v) => lb += v,
+      (lb1, lb2) => lb1 ++ lb2
+    )
 
     /**
       * Apply Small Star operation on (self, List(neighbor)) to get newNodePairs and count the change in connectivity
@@ -72,28 +74,27 @@ object ConnectedComponent extends Serializable {
 
     val newNodePairsWithChangeCount = allNeighbors.map(x => {
       val self = x._1
-      val neighbors = x._2.distinct
+      val neighbors = x._2.toList
       val minNode = argMin(self :: neighbors)
       val newNodePairs = (self :: neighbors).map(neighbor => {
         (neighbor, minNode)
       }).filter(x => {
         val neighbor = x._1
         val minNode = x._2
-        ((neighbor <= self && neighbor != minNode) || (self == neighbor))
+        (neighbor <= self && neighbor != minNode) || (self == neighbor)
       })
       val uniqueNewNodePairs = newNodePairs.toSet.toList
 
       /**
         * We count the change by taking a diff of the new node pairs with the old node pairs
         */
-      val connectivtyChangeCount = (uniqueNewNodePairs diff neighbors.map((self, _))).length
-      (uniqueNewNodePairs, connectivtyChangeCount)
+      val connectivityChangeCount = (uniqueNewNodePairs diff neighbors.map((self, _))).length
+      (uniqueNewNodePairs, connectivityChangeCount)
     }).persist(StorageLevel.MEMORY_AND_DISK_SER)
 
     /**
       * Sum all the changeCounts
       */
-
     val totalConnectivityCountChange = newNodePairsWithChangeCount.mapPartitions(iter => {
       val (v, l) = iter.toSeq.unzip
       val sum = l.foldLeft(0)(_ + _)
@@ -128,7 +129,6 @@ object ConnectedComponent extends Serializable {
 
     /**
       * reduce on self to get list of all its neighbors.
-      * We are using aggregateByKey. You may choose to use reduceByKey as in the Small Star
       * E.g: (4, List(1)), (1, List(4)), (6, List(1)), (1, List(6)), (3, List(2)), (2, List(3)), (6, List(5)), (5, List(6))
       * will result into (4, List(1)), (1, List(4, 6)), (6, List(1, 5)), (3, List(2)), (2, List(3)), (5, List(6))
       * Note:
@@ -136,9 +136,9 @@ object ConnectedComponent extends Serializable {
       * (2) also, watch out for data skew. In that case, consider using rangePartitioner
       */
 
-    val localAdd = (s: HashSet[Long], v: Long) => s += v
-    val partitionAdd = (s1: HashSet[Long], s2: HashSet[Long]) => s1 ++= s2
-    val allNeighbors = neighbors.aggregateByKey(HashSet.empty[Long]/*, rangePartitioner*/)(localAdd, partitionAdd)
+    val localAdd = (s: mutable.HashSet[Long], v: Long) => s += v
+    val partitionAdd = (s1: mutable.HashSet[Long], s2: mutable.HashSet[Long]) => s1 ++= s2
+    val allNeighbors = neighbors.aggregateByKey(mutable.HashSet.empty[Long]/*, rangePartitioner*/)(localAdd, partitionAdd)
 
     /**
       * Apply Large Star operation on (self, List(neighbor)) to get newNodePairs and count the change in connectivity
@@ -153,12 +153,12 @@ object ConnectedComponent extends Serializable {
       }).filter(x => {
         val neighbor = x._1
         val minNode = x._2
-        ((neighbor > self && neighbor != minNode) || (neighbor == self))
+        neighbor > self
       })
 
       val uniqueNewNodePairs = newNodePairs.toSet.toList
-      val connectivtyChangeCount = (uniqueNewNodePairs diff neighbors.map((self, _))).length
-      (uniqueNewNodePairs, connectivtyChangeCount)
+      val connectivityChangeCount = (uniqueNewNodePairs diff neighbors.map((self, _))).length
+      (uniqueNewNodePairs, connectivityChangeCount)
     }).persist(StorageLevel.MEMORY_AND_DISK_SER)
 
     val totalConnectivityCountChange = newNodePairsWithChangeCount.mapPartitions(iter => {
@@ -187,10 +187,10 @@ object ConnectedComponent extends Serializable {
   private def buildPairs(nodes:List[Long]) : List[(Long, Long)] = {
     buildPairs(nodes.head, nodes.tail, null.asInstanceOf[List[(Long, Long)]])
   }
-  
+
   @tailrec
   private def buildPairs(node: Long, neighbors:List[Long], partialPairs: List[(Long, Long)]) : List[(Long, Long)] = {
-    if (neighbors.length == 0) {
+    if (neighbors.isEmpty) {
       if (partialPairs != null)
         List((node, node)) ::: partialPairs
       else
@@ -200,7 +200,7 @@ object ConnectedComponent extends Serializable {
       if (node > neighbor)
         if (partialPairs != null) List((node, neighbor)) ::: partialPairs else List((node, neighbor))
       else
-        if (partialPairs != null) List((neighbor, node)) ::: partialPairs else List((neighbor, node))
+      if (partialPairs != null) List((neighbor, node)) ::: partialPairs else List((neighbor, node))
     } else {
       val newPartialPairs = neighbors.map(neighbor => {
         if (node > neighbor)
@@ -208,7 +208,7 @@ object ConnectedComponent extends Serializable {
         else
           List((neighbor, node))
       }).flatMap(x=>x)
-      
+
       if (partialPairs != null)
         buildPairs(neighbors.head, neighbors.tail, newPartialPairs ::: partialPairs)
       else
@@ -226,12 +226,12 @@ object ConnectedComponent extends Serializable {
     * @param maxIterationCount maximum number iterations to try before giving up
     * @return RDD of nodePairs
     */
-  
+
   @tailrec
   private def alternatingAlgo(nodePairs: RDD[(Long, Long)],
-      largeStarConnectivityChangeCount: Int, smallStarConnectivityChangeCount: Int, didConverge: Boolean, 
-      currIterationCount: Int, maxIterationCount: Int): (RDD[(Long, Long)], Boolean, Int) = {
-    
+                              largeStarConnectivityChangeCount: Int, smallStarConnectivityChangeCount: Int, didConverge: Boolean,
+                              currIterationCount: Int, maxIterationCount: Int): (RDD[(Long, Long)], Boolean, Int) = {
+
     val iterationCount = currIterationCount + 1
     if (didConverge)
       (nodePairs, true, currIterationCount)
@@ -241,18 +241,18 @@ object ConnectedComponent extends Serializable {
     else {
 
       val (nodePairsLargeStar, currLargeStarConnectivityChangeCount) = largeStar(nodePairs)
-      
+
       val (nodePairsSmallStar, currSmallStarConnectivityChangeCount) = smallStar(nodePairsLargeStar)
-      
+
       if ((currLargeStarConnectivityChangeCount == largeStarConnectivityChangeCount &&
-          currSmallStarConnectivityChangeCount == smallStarConnectivityChangeCount) ||
-          (currSmallStarConnectivityChangeCount == 0 && currLargeStarConnectivityChangeCount == 0)) {
+        currSmallStarConnectivityChangeCount == smallStarConnectivityChangeCount) ||
+        (currSmallStarConnectivityChangeCount == 0 && currLargeStarConnectivityChangeCount == 0)) {
         alternatingAlgo(nodePairsSmallStar, currLargeStarConnectivityChangeCount,
-            currSmallStarConnectivityChangeCount, true, iterationCount, maxIterationCount)
+          currSmallStarConnectivityChangeCount, true, iterationCount, maxIterationCount)
       }
       else {
         alternatingAlgo(nodePairsSmallStar, currLargeStarConnectivityChangeCount,
-            currSmallStarConnectivityChangeCount, false, iterationCount, maxIterationCount)
+          currSmallStarConnectivityChangeCount, false, iterationCount, maxIterationCount)
       }
     }
   }
@@ -264,17 +264,17 @@ object ConnectedComponent extends Serializable {
     * @return Connected Components as nodePairs where second member of the nodePair is the minimum node in the component
     */
   def run(cliques:RDD[List[Long]], maxIterationCount: Int): (RDD[(Long, Long)], Boolean, Int) = {
-    
+
     val nodePairs = cliques.map(aClique => {
       buildPairs(aClique)
     }).flatMap(x=>x)
-    
+
     val (cc, didConverge, iterCount) = alternatingAlgo(nodePairs, 9999999, 9999999, false, 0, maxIterationCount)
-    
+
     if (didConverge) {
       (cc, didConverge, iterCount)
     } else {
-        (null.asInstanceOf[RDD[(Long, Long)]], didConverge, iterCount)
+      (null.asInstanceOf[RDD[(Long, Long)]], didConverge, iterCount)
     }
   }
 }
