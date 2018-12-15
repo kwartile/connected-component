@@ -153,7 +153,7 @@ object ConnectedComponent extends Serializable {
       }).filter(x => {
         val neighbor = x._1
         val minNode = x._2
-        neighbor > self
+        neighbor >= self
       })
 
       val uniqueNewNodePairs = newNodePairs.toSet.toList
